@@ -1,0 +1,9 @@
+services:
+  comment-bot:
+    build: .
+    container_name: comment-bot
+    restart: unless-stopped 
+    volumes:
+      - $CONFIG_DIR:/app/config
+      - $DATA_DIR:/app/data
+    network_mode: "host"
