@@ -29,9 +29,11 @@ public static class Program
                 .AddSingleton<Paths>(BuildPaths)
                 .AddSingleton<Config>(BuildConfig)
                 .AddSingleton<ITelegramBotClient, TelegramBotClient>(ConfigureBotClient)
-                .AddSingleton<MessageSender>()
-                .AddSingleton<InputListener>()
-                .AddSingleton<UpdateHandler>();
+                .AddTransient<ImageDownloader>()
+                .AddTransient<MessageSender>()
+                .AddSingleton<PostBuilder>()
+                .AddSingleton<OpenRouterManager>()
+                .AddScoped<UpdateHandler>();
 
             builder.Services.AddHostedService<AppService>();
 
