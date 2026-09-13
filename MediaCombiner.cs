@@ -21,7 +21,7 @@ public class Post
 
     public override string ToString()
     {
-        return $"{{ MessageId=\"{MessageId}\", Caption=\"{Caption}\", FileIds=[ {string.Join(", ", FileIds.Select(s => $"\"{s}\""))} ] }}";
+        return $"{{ MessageId=\"{MessageId}\", Caption=\"{Caption}\", FileIds={FileIds.Count} }}";
     }
 }
 
