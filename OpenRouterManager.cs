@@ -81,7 +81,7 @@ public class OpenRouterManager : IDisposable
 
         var payloadStr = JsonSerializer.Serialize(payload);
 
-        logger.LogInformation("Sending payload: {str}", payloadStr);
+        logger.LogInformation("Sending payload: {str} chars", payloadStr.Length);
 
         var response = await Client.PostAsync(OPENROUTER_URL,
                 new StringContent(payloadStr, Encoding.UTF8, "application/json"));
