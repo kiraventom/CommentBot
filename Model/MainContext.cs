@@ -36,7 +36,7 @@ public class MainContext : DbContext
 
         modelBuilder.Entity<PostModel>(p => 
         {
-            p.HasIndex(p => p.TelegramId).IsUnique();
+            p.HasIndex(p => new { p.ChannelId, p.TelegramId }).IsUnique();
             p.HasOne<ChannelModel>().WithMany().HasForeignKey(p => p.ChannelId);
         });
 
@@ -47,7 +47,7 @@ public class MainContext : DbContext
 
         modelBuilder.Entity<BotCommentModel>(p => 
         {
-            p.HasIndex(p => p.TelegramId).IsUnique();
+            p.HasIndex(p => new { p.PostId, p.TelegramId }).IsUnique();
             p.HasOne<PostModel>().WithOne().HasForeignKey<BotCommentModel>(c => c.PostId);
         });
 
@@ -58,7 +58,7 @@ public class MainContext : DbContext
 
         modelBuilder.Entity<UserCommentModel>(p => 
         {
-            p.HasIndex(p => p.TelegramId).IsUnique();
+            p.HasIndex(p => new { p.PostId, p.TelegramId }).IsUnique();
             p.HasOne<UserModel>().WithMany().HasForeignKey(c => c.UserId);
             p.HasOne<PostModel>().WithMany().HasForeignKey(c => c.PostId);
             p.HasOne<BotCommentModel>().WithOne().HasForeignKey<UserCommentModel>(c => c.BotCommentId);
@@ -66,7 +66,7 @@ public class MainContext : DbContext
 
         modelBuilder.Entity<BotReplyToUserCommentModel>(p => 
         {
-            p.HasIndex(p => p.TelegramId).IsUnique();
+            p.HasIndex(p => new { p.PostId, p.TelegramId }).IsUnique();
             p.HasOne<PostModel>().WithMany().HasForeignKey(c => c.PostId);
             p.HasOne<UserCommentModel>().WithOne().HasForeignKey<BotReplyToUserCommentModel>(c => c.UserCommentId);
         });

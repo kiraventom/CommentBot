@@ -14,6 +14,13 @@ public class AppService(ILogger<AppService> logger, ITelegramBotClient client, P
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        using var scope = spf.CreateScope();
+        using (var context = scope.ServiceProvider.GetRequiredService<MainContext>())
+        {
+            context.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+            await context.Database.MigrateAsync();
+        }
+
         combiner.PostCombined += OnPostCombined;
 
         var receiverOptions = new ReceiverOptions()

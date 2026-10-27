@@ -18,8 +18,9 @@ public class Post
     {
         ChatId = medias.First().ChatId;
         MessageId = medias.Min(m => m.MessageId);
-        Caption = string.Concat('\n', medias.Select(m => m.Text));
+        Caption = string.Join('\n', medias.Select(m => m.Text).Where(t => !string.IsNullOrEmpty(t)));
         FileIds = medias.Select(m => m.FileId).ToList();
+        UtcDateTime = utcDateTime;
     }
 
     public override string ToString()
@@ -91,6 +92,10 @@ public class PostBuilder
 
                 foreach (var dt in medias.Select(m => m.UtcNow))
                     _mediasDict.Remove(dt);
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "Exception during building a post");
             }
             finally
             {

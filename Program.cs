@@ -56,7 +56,7 @@ public static class Program
     private static void ConfigureContext(IServiceProvider provider, DbContextOptionsBuilder builder)
     {
         var config = provider.GetRequiredService<Config>();
-        builder.UseSqlite(config.ConnectionString);
+        builder.UseSqlite(config.ConnectionString, o => o.CommandTimeout(30));
     }
 
     private static TelegramBotClient ConfigureBotClient(IServiceProvider provider)
@@ -107,7 +107,7 @@ public static class Program
 
         if (!File.Exists(configFilePath))
         {
-            var defaultConfig = new Config("BOT_TOKEN", "USERNAME_BOT", "OPENROUTER_TOKEN", "openrouter/model-3.0", "Data Source=/app/data/users.db;Cache=Shared", "Analyze the picture attached", "Write a comment");
+            var defaultConfig = new Config("BOT_TOKEN", "USERNAME_BOT", "OPENROUTER_TOKEN", "openrouter/model-3.0", "You are a Telegram bot", "Analyze the picture attached and write a comment", "Data Source=/app/data/users.db;Cache=Shared");
             defaultConfig.Save(configFilePath); 
             throw new InvalidOperationException($"Default config created at {configFilePath}. Fill it out and restart.");
         }

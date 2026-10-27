@@ -79,6 +79,9 @@ public class UpdateHandler(ILogger<UpdateHandler> logger, Config config, MainCon
         if (message.ReplyToMessage is not {} replyToMessage)
             return;
 
+        if (message.From is null)
+            return;
+
         var userId = message.From.Id;
         var user = context.Users.FirstOrDefault(c => c.TelegramId == userId);
         if (user is null)
@@ -96,16 +99,23 @@ public class UpdateHandler(ILogger<UpdateHandler> logger, Config config, MainCon
         if (string.IsNullOrWhiteSpace(message.Text))
             return;
 
-        var botComment = context.BotComments.FirstOrDefault(c => c.TelegramId == replyToMessage.MessageId);
+        var channel = context.Channels.First(c => c.TelegramId == message.Chat.Id);
+        var posts = context.Posts.Where(c => c.ChannelId == channel.ChannelId);
+        var botComments = posts.Select(p =>
+                new { Post = p, BotComment = context.BotComments.FirstOrDefault(c => c.PostId == p.PostId) })
+            .Where(x => x.BotComment != null)
+            .Select(x => x.BotComment);
+
+        var botComment = botComments.FirstOrDefault(c => c.TelegramId == replyToMessage.MessageId);
+
         if (botComment is null)
             return;
 
         var post = context.Posts.First(p => p.PostId == botComment.PostId);
-        var channel = context.Channels.First(c => c.ChannelId == post.ChannelId);
-        var userComment = context.UserComments.FirstOrDefault(c => c.PostId == post.PostId && c.UserId == user.UserId);
 
         logger.LogInformation("Post {postId}, comment {commentId}: Received comment from user {userId} \"{name}\", text \"{text}\"", post.PostId, botComment.BotCommentId, user.UserId, user.FirstName, message.Text);
 
+        var userComment = context.UserComments.FirstOrDefault(c => c.PostId == post.PostId && c.UserId == user.UserId);
         if (userComment is not null)
         {
             logger.LogInformation("Post {postId}, comment {commentId}: Already replied to user {userId} \"{name}\", ignoring", post.PostId, botComment.BotCommentId, user.UserId, user.FirstName);

@@ -38,7 +38,7 @@ namespace CommentBot.Migrations
                     b.HasIndex("PostId")
                         .IsUnique();
 
-                    b.HasIndex("TelegramId")
+                    b.HasIndex("PostId", "TelegramId")
                         .IsUnique();
 
                     b.ToTable("BotComments");
@@ -65,12 +65,10 @@ namespace CommentBot.Migrations
 
                     b.HasKey("BotReplyToUserCommentId");
 
-                    b.HasIndex("PostId");
-
-                    b.HasIndex("TelegramId")
+                    b.HasIndex("UserCommentId")
                         .IsUnique();
 
-                    b.HasIndex("UserCommentId")
+                    b.HasIndex("PostId", "TelegramId")
                         .IsUnique();
 
                     b.ToTable("BotReplies");
@@ -137,9 +135,7 @@ namespace CommentBot.Migrations
 
                     b.HasKey("PostId");
 
-                    b.HasIndex("ChannelId");
-
-                    b.HasIndex("TelegramId")
+                    b.HasIndex("ChannelId", "TelegramId")
                         .IsUnique();
 
                     b.ToTable("Posts");
@@ -172,12 +168,10 @@ namespace CommentBot.Migrations
                     b.HasIndex("BotCommentId")
                         .IsUnique();
 
-                    b.HasIndex("PostId");
-
-                    b.HasIndex("TelegramId")
-                        .IsUnique();
-
                     b.HasIndex("UserId");
+
+                    b.HasIndex("PostId", "TelegramId")
+                        .IsUnique();
 
                     b.ToTable("UserComments");
                 });
