@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using CommentBot.Model;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
@@ -27,6 +29,7 @@ public static class Program
 
             builder.Services.AddSerilog(ConfigureLogger)
                 .AddSingleton<Paths>(BuildPaths)
+                .AddDbContext<MainContext>(ConfigureContext)
                 .AddSingleton<Config>(BuildConfig)
                 .AddSingleton<ITelegramBotClient, TelegramBotClient>(ConfigureBotClient)
                 .AddTransient<ImageDownloader>()
@@ -48,6 +51,12 @@ public static class Program
         {
             await Log.CloseAndFlushAsync();
         }
+    }
+
+    private static void ConfigureContext(IServiceProvider provider, DbContextOptionsBuilder builder)
+    {
+        var config = provider.GetRequiredService<Config>();
+        builder.UseSqlite(config.ConnectionString);
     }
 
     private static TelegramBotClient ConfigureBotClient(IServiceProvider provider)
@@ -98,7 +107,7 @@ public static class Program
 
         if (!File.Exists(configFilePath))
         {
-            var defaultConfig = new Config("BOT_TOKEN", "USERNAME_BOT", "OPENROUTER_TOKEN", "openrouter/model-3.0", "Analyze the picture attached");
+            var defaultConfig = new Config("BOT_TOKEN", "USERNAME_BOT", "OPENROUTER_TOKEN", "openrouter/model-3.0", "Data Source=/app/data/users.db;Cache=Shared", "Analyze the picture attached", "Write a comment");
             defaultConfig.Save(configFilePath); 
             throw new InvalidOperationException($"Default config created at {configFilePath}. Fill it out and restart.");
         }

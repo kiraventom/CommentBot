@@ -21,6 +21,18 @@ public class ImageDownloader(ILogger<ImageDownloader> logger, ITelegramBotClient
 
         return localFileName;
     }
+
+    public async IAsyncEnumerable<string> DownloadAll(IEnumerable<string> fileIds)
+    {
+        foreach (var fileId in fileIds)
+        {
+            var imagePath = await Download(fileId);
+            if (imagePath is null)
+                continue;
+
+            yield return imagePath;
+        }
+    }
 }
 
 

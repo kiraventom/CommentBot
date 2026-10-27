@@ -4,14 +4,17 @@ namespace CommentBot;
 
 public record struct Media(DateTimeOffset UtcNow, string MediaGroupId, long ChatId, int MessageId, string FileId, string Text = null);
 
+public record Comment(long ChatId, long SenderId, string Text, int MessageId);
+
 public class Post
 {
     public long ChatId { get; }
     public string Caption { get; }
     public int MessageId { get; }
     public IReadOnlyCollection<string> FileIds { get; }
+    public DateTime UtcDateTime { get; }
 
-    public Post(IReadOnlyCollection<Media> medias)
+    public Post(DateTime utcDateTime, IReadOnlyCollection<Media> medias)
     {
         ChatId = medias.First().ChatId;
         MessageId = medias.Min(m => m.MessageId);
@@ -41,7 +44,6 @@ public class PostBuilder
 
         _ = StartCollectingPosts();
     }
-
 
     public void AddPhoto(long chatId, int messageId, string fileId, string mediaGroupId, string text)
     {
@@ -81,7 +83,7 @@ public class PostBuilder
                 var lastMedia = _mediasDict[lastMediaDT];
                 var medias = _mediasDict.Values.Where(m => m.MediaGroupId == lastMedia.MediaGroupId).ToList();
 
-                var post = new Post(medias);
+                var post = new Post(utcDT, medias);
                 logger.LogInformation("Post {post} successfully combined", post.ToString());
 
                 if (PostCombined != null)

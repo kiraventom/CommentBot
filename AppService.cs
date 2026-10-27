@@ -1,3 +1,5 @@
+using CommentBot.Model;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -12,7 +14,7 @@ public class AppService(ILogger<AppService> logger, ITelegramBotClient client, P
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        combiner?.PostCombined += OnPostCombined;
+        combiner.PostCombined += OnPostCombined;
 
         var receiverOptions = new ReceiverOptions()
         {
@@ -28,32 +30,85 @@ public class AppService(ILogger<AppService> logger, ITelegramBotClient client, P
     private async Task OnPostCombined(Post post)
     {
         using var scope = spf.CreateScope();
-        var imageDownloader = scope.ServiceProvider.GetRequiredService<ImageDownloader>();
+        using var context = scope.ServiceProvider.GetRequiredService<MainContext>();
+        var transaction = await context.Database.BeginTransactionAsync();
 
-        var caption = post.Caption;
-        var imagePaths = new List<string>();
-        foreach (var fileId in post.FileIds)
+        try
         {
-            var imagePath = await imageDownloader.Download(fileId);
-            if (imagePath is null)
-                continue;
+            var imageDownloader = scope.ServiceProvider.GetRequiredService<ImageDownloader>();
+            var caption = post.Caption;
 
-            imagePaths.Add(imagePath);
+            var channel = context.Channels.First(c => c.TelegramId == post.ChatId);
+            var postModel = new PostModel()
+            {
+                TelegramId = post.MessageId,
+                Caption = caption,
+                DateTime = post.UtcDateTime,
+                ChannelId = channel.ChannelId
+            };
+
+            context.Posts.Add(postModel);
+            await context.SaveChangesAsync();
+
+            var imagePaths = new List<string>();
+            foreach (var fileId in post.FileIds)
+            {
+                var imagePath = await imageDownloader.Download(fileId);
+                if (imagePath is null)
+                    continue;
+
+                imagePaths.Add(imagePath);
+
+                var fileModel = new FileModel()
+                {
+                    TelegramFileId = fileId,
+                    PostId = postModel.PostId,
+                };
+
+                context.Files.Add(fileModel);
+            }
+
+            var comment = await openRouterManager.GetComment(caption, imagePaths);
+
+            foreach (var imagePath in imagePaths)
+                File.Delete(imagePath);
+
+            if (comment is null)
+            {
+                logger.LogWarning("OpenRouter returned empty string");
+                return;
+            }
+
+            var messageSender = scope.ServiceProvider.GetRequiredService<MessageSender>();
+            var sentMessageId = await messageSender.Send(post.ChatId, post.MessageId, comment);
+
+            if (sentMessageId is null)
+                return;
+
+            var commentModel = new BotCommentModel()
+            {
+                TelegramId = sentMessageId.Value,
+                PostId = postModel.PostId,
+                Text = comment
+            };
+
+            context.BotComments.Add(commentModel);
+
+            await context.SaveChangesAsync();
+            await transaction.CommitAsync();
         }
-
-        var comment = await openRouterManager.GetComment(caption, imagePaths);
-        if (comment is null)
-            return;
-
-        var messageSender = scope.ServiceProvider.GetRequiredService<MessageSender>();
-        await messageSender.Send(post.ChatId, post.MessageId, comment);
+        catch (Exception e)
+        {
+            await transaction.RollbackAsync();
+            logger.LogError(e, "Transaction failed, rolling back");
+        }
     }
 
     private async Task OnUpdate(ITelegramBotClient client, Update update, CancellationToken token)
     {
         using var scope = spf.CreateScope();
         var updateHandler = scope.ServiceProvider.GetRequiredService<UpdateHandler>();
-        await updateHandler.HandleUpdate(update);
+        await updateHandler.HandleUpdate(update, token);
     }
 
     private Task OnError(ITelegramBotClient client, Exception exception, HandleErrorSource source, CancellationToken token)

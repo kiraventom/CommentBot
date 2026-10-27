@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 
 namespace CommentBot;
 
+public record UserComment(string Author, string Text);
+
 public class OpenRouterManager : IDisposable
 {
     private record OpenRouterResponse(List<Choice> choices, Usage usage);
@@ -12,10 +14,11 @@ public class OpenRouterManager : IDisposable
     private record Usage(double cost);
     private record Message(string content, string refusal);
 
+    private const string OPENROUTER_URL = @"https://openrouter.ai/api/v1/chat/completions";
+
     private HttpClient Client { get; }
 
-    private const string OPENROUTER_URL = @"https://openrouter.ai/api/v1/chat/completions";
-    private readonly ILogger<OpenRouterManager> logger;
+    private readonly ILogger logger;
     private readonly Config config;
 
     public OpenRouterManager(ILogger<OpenRouterManager> logger, Config config)
@@ -42,23 +45,46 @@ public class OpenRouterManager : IDisposable
 
     public void Dispose() => Client.Dispose();
 
-    public async Task<string> GetComment(string caption, IReadOnlyCollection<string> imagePaths)
-    {
-        var systemPrompt = config.Prompt;
+    public Task<string> GetComment(string caption, IReadOnlyCollection<string> imagePaths) =>
+        Request(caption, imagePaths, previousComment: null, userComment: null);
 
-        var userContent = new List<object>();
+    public Task<string> GetReply(
+        string caption,
+        IReadOnlyCollection<string> imagePaths,
+        string botComment,
+        UserComment userComment) =>
+        Request(caption, imagePaths, botComment, userComment);
+
+    private async Task<string> Request(
+        string caption,
+        IReadOnlyCollection<string> imagePaths,
+        string previousComment = null,
+        UserComment userComment = null)
+    {
+        var isReply = userComment is not null;
+
+        var systemPrompt = config.SystemPrompt;
+        if (isReply)
+            systemPrompt += $"\n\n{config.ReplyPrompt}";
+        else
+            systemPrompt += $"\n\n{config.PostPrompt}";
+
+        var messages = new List<object>
+        {
+            new { role = "system", content = systemPrompt }
+        };
+
+        var postContent = new List<object>();
 
         if (!string.IsNullOrEmpty(caption))
-        {
-            userContent.Add(new { type = "text", text = caption });
-        }
+            postContent.Add(new { type = "text", text = caption });
 
         foreach (var path in imagePaths)
         {
-            byte[] imageBytes = await File.ReadAllBytesAsync(path);
-            string base64 = Convert.ToBase64String(imageBytes);
+            var imageBytes = await File.ReadAllBytesAsync(path);
+            var base64 = Convert.ToBase64String(imageBytes);
 
-            userContent.Add(new
+            postContent.Add(new
             {
                 type = "image_url",
                 image_url = new
@@ -69,19 +95,30 @@ public class OpenRouterManager : IDisposable
             });
         }
 
+        if (postContent.Count > 0)
+            messages.Add(new { role = "user", content = postContent });
+
+        if (!string.IsNullOrWhiteSpace(previousComment))
+            messages.Add(new { role = "assistant", content = previousComment });
+
+        if (userComment is not null)
+            messages.Add(new { role = "user", content = $"Комментарий от {userComment.Author}: {userComment.Text}" });
+
+        if (messages.Count == 1)
+        {
+            logger.LogWarning("Nothing to send: post has no caption and no images");
+            return null;
+        }
+
         var payload = new
         {
             model = config.Model,
-            messages = new object[]
-            {
-                new { role = "system", content = systemPrompt },
-                new { role = "user", content = userContent }
-            }
+            messages
         };
 
         var payloadStr = JsonSerializer.Serialize(payload);
 
-        logger.LogInformation("Sending payload: {str} chars", payloadStr.Length);
+        logger.LogInformation("Sending payload: {str} chars, {count} messages", payloadStr.Length, messages.Count);
 
         var response = await Client.PostAsync(OPENROUTER_URL,
                 new StringContent(payloadStr, Encoding.UTF8, "application/json"));
@@ -119,11 +156,8 @@ public class OpenRouterManager : IDisposable
             return null;
         }
 
-        var responseText = choice.message.content;
-
         logger.LogInformation("OpenRouter returned \"{response}\"", choice.message.content);
 
-        return responseText;
+        return choice.message.content;
     }
 }
-

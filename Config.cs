@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace CommentBot;
 
-public class Config(string botToken, string botUsername, string openRouterToken, string model, string prompt, string proxyAddress = null)
+public class Config(string botToken, string botUsername, string openRouterToken, string model, string systemPrompt, string postPrompt, string connectionString, string replyPrompt = null, string proxyAddress = null)
 {
     /// <summary>
     /// Telegram bot token. Received from <a href="https://t.me/BotFather">BotFather</a>
@@ -27,7 +27,22 @@ public class Config(string botToken, string botUsername, string openRouterToken,
     /// <summary>
     /// System prompt.
     /// </summary>
-    public string Prompt { get; } = prompt;
+    public string SystemPrompt { get; } = systemPrompt;
+
+    /// <summary>
+    /// Post prompt.
+    /// </summary>
+    public string PostPrompt { get; } = postPrompt;
+
+    /// <summary>
+    /// Reply prompt.
+    /// </summary>
+    public string ReplyPrompt { get; } = replyPrompt;
+
+    /// <summary>
+    /// SQLite database connection string
+    /// </summary>
+    public string ConnectionString { get; } = connectionString;
 
     /// <summary>
     /// HTTP proxy address. Optional
