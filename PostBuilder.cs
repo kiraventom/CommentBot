@@ -16,7 +16,7 @@ public class Post
     {
         ChatId = medias.First().ChatId;
         MessageId = medias.Min(m => m.MessageId);
-        Caption = string.Join('\n', medias.Select(m => m.Text).Where(t => !string.IsNullOrEmpty(t)));
+        Caption = string.Join('\n', medias.Select(m => m.Text).Where(t => !string.IsNullOrEmpty(t)).ToList());
         FileIds = medias.Select(m => m.FileId).ToList();
         UtcDateTime = utcDateTime;
     }
