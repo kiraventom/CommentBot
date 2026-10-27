@@ -77,9 +77,6 @@ public class AppService(ILogger<AppService> logger, ITelegramBotClient client, P
 
             var comment = await openRouterManager.GetComment(caption, imagePaths);
 
-            foreach (var imagePath in imagePaths)
-                File.Delete(imagePath);
-
             if (comment is null)
             {
                 logger.LogWarning("OpenRouter returned empty string");

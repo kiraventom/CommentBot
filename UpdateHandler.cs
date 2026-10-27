@@ -19,7 +19,7 @@ public class UpdateHandler(ILogger<UpdateHandler> logger, Config config, MainCon
 
         try
         {
-            if (message.From.Id == CHANNEL_ID)
+            if (message.From is { Id: CHANNEL_ID })
                 await HandlePost(message);
             else if (!string.IsNullOrEmpty(config.ReplyPrompt))
                 await HandleReply(message);
@@ -99,7 +99,10 @@ public class UpdateHandler(ILogger<UpdateHandler> logger, Config config, MainCon
         if (string.IsNullOrWhiteSpace(message.Text))
             return;
 
-        var channel = context.Channels.First(c => c.TelegramId == message.Chat.Id);
+        var channel = context.Channels.FirstOrDefault(c => c.TelegramId == message.Chat.Id);
+        if (channel is null)
+            return;
+
         var posts = context.Posts.Where(c => c.ChannelId == channel.ChannelId);
         var botComments = posts.Select(p =>
                 new { Post = p, BotComment = context.BotComments.FirstOrDefault(c => c.PostId == p.PostId) })
@@ -142,9 +145,6 @@ public class UpdateHandler(ILogger<UpdateHandler> logger, Config config, MainCon
         var imagePaths = await imageDownloader.DownloadAll(fileIds).ToListAsync();
         
         var reply = await openRouterManager.GetReply(post.Caption, imagePaths, botComment.Text, new UserComment(user.FirstName, userComment.Text));
-
-        foreach (var imagePath in imagePaths)
-            File.Delete(imagePath);
 
         if (string.IsNullOrEmpty(reply))
         {
