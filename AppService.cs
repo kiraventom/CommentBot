@@ -42,6 +42,16 @@ public class AppService(ILogger<AppService> logger, ITelegramBotClient client, P
 
         try
         {
+            foreach (var fileId in post.FileIds)
+            {
+                var file = context.Files.FirstOrDefault(f => f.TelegramFileId == fileId);
+                if (file is not null)
+                {
+                    logger.LogWarning("Post contains {fileId} that was already present in post {postId}, skipping the whole post", fileId, file.PostId);
+                    return;
+                }
+            }
+
             var imageDownloader = scope.ServiceProvider.GetRequiredService<ImageDownloader>();
             var caption = post.Caption;
 
