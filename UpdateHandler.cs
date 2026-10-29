@@ -144,7 +144,9 @@ public class UpdateHandler(ILogger<UpdateHandler> logger, Config config, MainCon
         
         var imagePaths = await imageDownloader.DownloadAll(fileIds).ToListAsync();
         
-        var reply = await openRouterManager.GetReply(post.Caption, imagePaths, botComment.Text, new UserComment(user.FirstName, userComment.Text));
+        var firstName = user.FirstName.Contains("group", StringComparison.OrdinalIgnoreCase) ? string.Empty : user.FirstName;
+
+        var reply = await openRouterManager.GetReply(post.Caption, imagePaths, botComment.Text, new UserComment(firstName, userComment.Text));
 
         if (string.IsNullOrEmpty(reply))
         {
